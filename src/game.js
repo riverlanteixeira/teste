@@ -187,6 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let dustinAudioEndedHandler = null;
     let dustinAudioErrorHandler = null;
     let callEndTimeout = null;
+    let callAudioMonitorInterval = null;
+    let callEndedFlag = false;
 
     let currentMissionAudio = 'walkie-talkie'; // Controla qual áudio tocar
 
@@ -303,6 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Handler nomeado para garantir que podemos removê-lo depois
         dustinAudioEndedHandler = function () {
+            if (callEndedFlag) return;
+            callEndedFlag = true;
+            // Limpar fallback e monitor
+            if (callEndTimeout) { clearTimeout(callEndTimeout); callEndTimeout = null; }
+            if (callAudioMonitorInterval) { clearInterval(callAudioMonitorInterval); callAudioMonitorInterval = null; }
             callStatus.innerText = "Chamada finalizada";
             // pequena folga antes de fechar para UX
             setTimeout(() => endCall(false), 1500);
@@ -338,7 +345,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const playAudio = () => {
             dustinAudio.play().then(() => {
+                // Reset flag
+                callEndedFlag = false;
                 scheduleFallbackEnd();
+
+                // Iniciar monitor de polling para garantir detecção de fim mesmo quando 'ended' não disparar
+                if (callAudioMonitorInterval) clearInterval(callAudioMonitorInterval);
+                callAudioMonitorInterval = setInterval(() => {
+                    try {
+                        if (!dustinAudio) return;
+                        // if audio reports ended or nearly reached duration
+                        if (dustinAudio.ended || (dustinAudio.duration > 0 && (dustinAudio.currentTime >= (dustinAudio.duration - 0.5)))) {
+                            if (!callEndedFlag) {
+                                console.log('Monitor detectou fim do áudio (polling).');
+                                callEndedFlag = true;
+                                if (callEndTimeout) { clearTimeout(callEndTimeout); callEndTimeout = null; }
+                                clearInterval(callAudioMonitorInterval);
+                                callAudioMonitorInterval = null;
+                                setTimeout(() => endCall(false), 500);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Erro no monitor de áudio:', e);
+                    }
+                }, 500);
             }).catch(error => {
                 console.error('Erro ao reproduzir áudio:', error);
                 callStatus.innerText = "Áudio indisponível - continuando...";
@@ -404,6 +434,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dustinAudioEndedHandler = null;
         dustinAudioErrorHandler = null;
+        // Limpar monitor de polling caso exista
+        if (callAudioMonitorInterval) {
+            clearInterval(callAudioMonitorInterval);
+            callAudioMonitorInterval = null;
+        }
+        callEndedFlag = false;
 
         // Remover listeners dos botões para evitar vazamentos
         answerButton.removeEventListener('click', answerCall);

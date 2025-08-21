@@ -926,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (objectId === 'demogorgon') {
             // Iniciar combate manualmente
             const objectName = getObjectName(objectId);
-            showToast(`${objectName} apareceu! Prepare-se para a batalha!`, 'warning');
+            showToast(`${objectName} apareceu.`, 'info');
 
             // Iniciar combate após um pequeno delay
             setTimeout(() => {
@@ -940,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             objectEntity.classList.add('collectible-ready');
             const objectName = getObjectName(objectId);
-            showToast(`${objectName} encontrado! Toque para coletar.`, 'success');
+            showToast(`${objectName} encontrado.`, 'success');
         }
         canPlace = false;
     }
@@ -957,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentObjectIndex < objectsToPlace.length) {
             const nextObjectId = objectsToPlace[currentObjectIndex];
             const nextObjectName = getObjectName(nextObjectId);
-            showToast(`Ótimo! Agora vá até a localização de ${nextObjectName}`, 'info', 4000);
+            showToast(`${nextObjectName} desbloqueado!`, 'info', 4000);
             canPlace = false;
             setTimeout(checkProximityToLocations, 1500);
         } else {
@@ -1068,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
     AFRAME.registerComponent('demogorgon-combat', {
         schema: {
             maxHealth: { type: 'number', default: 100 },
-            damage: { type: 'number', default: 20 },
+            damage: { type: 'number', default: 10 },
             isActive: { type: 'boolean', default: false }
         },
 
@@ -1177,8 +1177,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.el.classList.remove('demogorgon-spawn');
             }, 1500);
 
-            // Toast de início de combate
-            this.showCombatToast('👹 Demogorgon apareceu! Prepare-se para a batalha!', 'warning');
+            // Toast de início de combate (mensagem simplificada)
+            this.showCombatToast('👹 Demogorgon apareceu!', 'info');
 
             // Vibração de alerta
             this.vibrateDevice([200, 100, 200, 100, 200]);

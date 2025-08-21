@@ -1,0 +1,11 @@
+Model Information:
+* title:	Stranger Things Walkie Talkie
+* source:	https://sketchfab.com/3d-models/stranger-things-walkie-talkie-d85f899a00114042abd0562c25a08438
+* author:	Mattyew (https://sketchfab.com/mrgrandgrind)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Stranger Things Walkie Talkie" (https://sketchfab.com/3d-models/stranger-things-walkie-talkie-d85f899a00114042abd0562c25a08438) by Mattyew (https://sketchfab.com/mrgrandgrind) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

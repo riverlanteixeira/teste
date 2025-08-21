@@ -1,0 +1,1117 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Stranger Things AR - Caça aos Objetos</title>
+    <meta name="description" content="Descubra os objetos que aparecem no seu mundo">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- Three.js já está incluído no A-Frame, mas vamos garantir acesso global -->
+    <script>
+        // Garantir que THREE esteja disponível globalmente
+        window.THREE = window.THREE || AFRAME.THREE;
+    </script>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ui-element {
+            pointer-events: auto;
+        }
+
+        .ui-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .ui-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #logo {
+            width: 80%;
+            max-width: 400px;
+            margin-bottom: 30px;
+        }
+
+        #progress-bar-container {
+            width: 70%;
+            max-width: 350px;
+            height: 20px;
+            border: 2px solid #e72626;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #e72626;
+            transition: width 0.4s ease-in-out;
+        }
+
+        #loading-info {
+            font-size: 1em;
+            color: #ccc;
+            height: 40px;
+            margin-top: 10px;
+            text-align: center;
+            padding: 0 15px;
+        }
+
+        #enter-button {
+            display: none;
+            /* Começa escondido */
+            margin-top: 40px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #fff;
+            background-color: #e72626;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Ícone da mochila */
+        #backpack-icon {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            border-radius: 15px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 15;
+            border: 2px solid #654321;
+        }
+
+        #backpack-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        #backpack-icon:active {
+            transform: scale(0.95);
+        }
+
+        /* Badge de contador */
+        #backpack-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #e72626;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            border: 2px solid #fff;
+        }
+
+        /* Modal da mochila */
+        #backpack-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+        }
+
+        #backpack-content {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            border: 2px solid #e72626;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            color: #fff;
+            position: relative;
+        }
+
+        #backpack-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e72626;
+        }
+
+        #backpack-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #close-backpack {
+            background: #e72626;
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        #close-backpack:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        #collectibles-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #collectibles-list li {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #collectibles-list li.found {
+            background: rgba(76, 175, 80, 0.2);
+            border-left-color: #4CAF50;
+            color: #a5d6a7;
+        }
+
+        #collectibles-list li:not(.found) {
+            border-left-color: #e72626;
+        }
+
+        #collectibles-list li .item-status {
+            margin-left: auto;
+            font-size: 1.2em;
+        }
+
+        #location-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(231, 38, 38, 0.2);
+            border-radius: 10px;
+            font-size: 0.9em;
+            border: 1px solid #e72626;
+        }
+
+        #progress-info {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #ccc;
+        }
+
+        #progress-bar-game {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e72626 0%, #ff4444 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Medidor de distância na tela principal */
+        #distance-meter {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 30px;
+            border: 2px solid #e72626;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            font-size: 1.1em;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            display: none;
+            min-width: 250px;
+            max-width: 90vw;
+            transition: all 0.3s ease;
+        }
+
+        #distance-meter.show {
+            display: block;
+        }
+
+        #distance-meter .distance-icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+
+        #distance-meter .distance-text {
+            font-weight: bold;
+        }
+
+        #distance-meter.unlocked {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        #distance-meter.unlocked .distance-icon {
+            color: #4CAF50;
+        }
+
+        /* Sistema de notificações toast */
+        #toast-container {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 25px;
+            margin-bottom: 10px;
+            border: 2px solid #e72626;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 80vw;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .toast.warning {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+
+        /* Animação para objetos colecionáveis */
+        @keyframes collectible-pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .collectible-ready {
+            animation: collectible-pulse 2s ease-in-out infinite;
+        }
+
+        /* Animação de destaque quando o jogador erra o clique */
+        @keyframes collectible-highlight {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+
+            25% {
+                transform: scale(1.15);
+                filter: brightness(1.5);
+            }
+
+            50% {
+                transform: scale(1.1);
+                filter: brightness(1.3);
+            }
+
+            75% {
+                transform: scale(1.15);
+                filter: brightness(1.5);
+            }
+        }
+
+        .collectible-highlight {
+            animation: collectible-highlight 0.8s ease-in-out;
+        }
+
+        #victory-screen h1 {
+            font-size: 2.5em;
+            color: #e72626;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        #victory-screen p {
+            font-size: 1.2em;
+        }
+
+        /* Esconder completamente o botão VR do A-Frame */
+        .a-enter-vr-button,
+        .a-enter-ar-button,
+        .a-vr-mode-ui {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Tela de ligação do Dustin */
+        #call-screen {
+            background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Efeito de fundo animado */
+        #call-screen::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(231, 38, 38, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        /* Status bar da ligação */
+        #call-status-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #fff;
+            border: 1px solid #333;
+        }
+
+        /* Container principal da ligação */
+        #call-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px 20px;
+        }
+
+        #dustin-avatar {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 6px solid #e72626;
+            margin-bottom: 30px;
+            box-shadow:
+                0 0 40px rgba(231, 38, 38, 0.6),
+                0 0 80px rgba(231, 38, 38, 0.3),
+                inset 0 0 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Efeito de ondas no avatar */
+        #dustin-avatar::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            right: -6px;
+            bottom: -6px;
+            border-radius: 50%;
+            border: 3px solid rgba(231, 38, 38, 0.5);
+            animation: ripple 2s infinite;
+        }
+
+        #dustin-avatar::after {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: -12px;
+            right: -12px;
+            bottom: -12px;
+            border-radius: 50%;
+            border: 2px solid rgba(231, 38, 38, 0.3);
+            animation: ripple 2s infinite 0.5s;
+        }
+
+        #caller-name {
+            font-size: 2.2em;
+            font-weight: 300;
+            margin-bottom: 8px;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            letter-spacing: 1px;
+        }
+
+        #caller-subtitle {
+            font-size: 1em;
+            color: #888;
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+
+        #call-status {
+            font-size: 1.1em;
+            color: #e72626;
+            margin-bottom: 60px;
+            text-align: center;
+            font-weight: 400;
+            animation: blink 1.5s infinite;
+        }
+
+        /* Timer da ligação */
+        #call-timer {
+            font-size: 1.2em;
+            color: #fff;
+            margin-bottom: 40px;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid #333;
+            display: none;
+        }
+
+        #call-buttons {
+            display: flex;
+            gap: 80px;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .call-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .call-button:active {
+            transform: scale(0.95);
+        }
+
+        #answer-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            box-shadow:
+                0 4px 20px rgba(76, 175, 80, 0.4),
+                0 0 30px rgba(76, 175, 80, 0.2);
+        }
+
+        #answer-button:hover {
+            box-shadow:
+                0 6px 25px rgba(76, 175, 80, 0.5),
+                0 0 40px rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+        }
+
+        #decline-button {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+            box-shadow:
+                0 4px 20px rgba(244, 67, 54, 0.4),
+                0 0 30px rgba(244, 67, 54, 0.2);
+        }
+
+        #decline-button:hover {
+            box-shadow:
+                0 6px 25px rgba(244, 67, 54, 0.5),
+                0 0 40px rgba(244, 67, 54, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Animações */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes blink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0.6;
+            }
+        }
+
+        .calling-animation {
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+
+        /* Efeito de ondas durante a ligação */
+        .call-active #dustin-avatar {
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        /* Indicadores visuais */
+        .signal-bars {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            display: flex;
+            gap: 3px;
+            align-items: flex-end;
+        }
+
+        .signal-bar {
+            width: 4px;
+            background: #4CAF50;
+            border-radius: 2px;
+            animation: signal 1.5s infinite;
+        }
+
+        .signal-bar:nth-child(1) {
+            height: 8px;
+            animation-delay: 0s;
+        }
+
+        .signal-bar:nth-child(2) {
+            height: 12px;
+            animation-delay: 0.2s;
+        }
+
+        .signal-bar:nth-child(3) {
+            height: 16px;
+            animation-delay: 0.4s;
+        }
+
+        .signal-bar:nth-child(4) {
+            height: 20px;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes signal {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* Sistema de Combate do Demogorgon */
+        #combat-ui {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 2px solid #e72626;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            display: none;
+            min-width: 300px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+        }
+
+        #combat-ui.show {
+            display: block;
+        }
+
+        #enemy-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #e72626;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #health-bar-container {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            border: 1px solid #666;
+        }
+
+        #health-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 50%, #CDDC39 100%);
+            width: 100%;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        #health-bar.low {
+            background: linear-gradient(90deg, #f44336 0%, #ff5722 100%);
+        }
+
+        #health-bar.critical {
+            background: linear-gradient(90deg, #d32f2f 0%, #f44336 100%);
+            animation: health-critical 0.5s infinite alternate;
+        }
+
+        #health-text {
+            font-size: 0.9em;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        #combat-instructions {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        @keyframes health-critical {
+            0% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Animações de combate */
+        @keyframes demogorgon-hit {
+            0% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+
+            25% {
+                transform: scale(0.9);
+                filter: brightness(2) hue-rotate(0deg);
+            }
+
+            50% {
+                transform: scale(1.1);
+                filter: brightness(1.5) hue-rotate(180deg);
+            }
+
+            75% {
+                transform: scale(0.95);
+                filter: brightness(1.8) hue-rotate(90deg);
+            }
+
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+        }
+
+        .demogorgon-hit {
+            animation: demogorgon-hit 0.6s ease-in-out;
+        }
+
+        @keyframes demogorgon-death {
+            0% {
+                transform: scale(1) rotateY(0deg);
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            25% {
+                transform: scale(1.2) rotateY(90deg);
+                opacity: 0.8;
+                filter: brightness(2) hue-rotate(180deg);
+            }
+
+            50% {
+                transform: scale(0.8) rotateY(180deg);
+                opacity: 0.6;
+                filter: brightness(0.5) hue-rotate(270deg);
+            }
+
+            75% {
+                transform: scale(0.4) rotateY(270deg);
+                opacity: 0.3;
+                filter: brightness(0.2);
+            }
+
+            100% {
+                transform: scale(0) rotateY(360deg);
+                opacity: 0;
+                filter: brightness(0);
+            }
+        }
+
+        .demogorgon-death {
+            animation: demogorgon-death 2s ease-in-out forwards;
+        }
+
+        @keyframes demogorgon-spawn {
+            0% {
+                transform: scale(0) rotateY(0deg);
+                opacity: 0;
+                filter: brightness(0);
+            }
+
+            25% {
+                transform: scale(0.4) rotateY(90deg);
+                opacity: 0.3;
+                filter: brightness(0.5) hue-rotate(180deg);
+            }
+
+            50% {
+                transform: scale(0.8) rotateY(180deg);
+                opacity: 0.6;
+                filter: brightness(1.5) hue-rotate(90deg);
+            }
+
+            75% {
+                transform: scale(1.2) rotateY(270deg);
+                opacity: 0.8;
+                filter: brightness(2);
+            }
+
+            100% {
+                transform: scale(1) rotateY(360deg);
+                opacity: 1;
+                filter: brightness(1);
+            }
+        }
+
+        .demogorgon-spawn {
+            animation: demogorgon-spawn 1.5s ease-out;
+        }
+
+        /* Efeito de mira no Demogorgon */
+        @keyframes demogorgon-targeted {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1) drop-shadow(0 0 0 rgba(231, 38, 38, 0));
+            }
+
+            50% {
+                transform: scale(1.05);
+                filter: brightness(1.3) drop-shadow(0 0 20px rgba(231, 38, 38, 0.8));
+            }
+        }
+
+        .demogorgon-targeted {
+            animation: demogorgon-targeted 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- A-Frame Scene com Hit-Test -->
+    <a-scene id="ar-scene"
+        webxr="requiredFeatures: hit-test, local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay;"
+        vr-mode-ui="enabled: false;"
+        renderer="logarithmicDepthBuffer: true; colorManagement: true; antialias: true; physicallyCorrectLights: true;"
+        background="color: transparent;">
+        <a-assets>
+            <a-asset-item id="bike-model" src="assets/models/bicicleta-will.glb"></a-asset-item>
+            <a-asset-item id="compass-model" src="assets/models/compass.glb"></a-asset-item>
+            <a-asset-item id="baseball-bat-model" src="assets/models/baseball_bat.glb"></a-asset-item>
+
+            <a-asset-item id="walkie-talkie-model"
+                src="assets/models/stranger_things_walkie_talkie/scene.gltf"></a-asset-item>
+            <a-asset-item id="demogorgon-model" src="assets/models/demogorgon.glb"></a-asset-item>
+            <a-asset-item id="will-mundo-invertido-model"
+                src="assets/models/will_byers_no_mundo_invertido/scene.gltf"></a-asset-item>
+        </a-assets>
+
+        <!-- Iluminação da Cena -->
+        <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
+        <a-light type="directional" color="#FFF" intensity="1.0" position="-1 2 1"></a-light>
+        <a-light type="point" color="#FFF" intensity="0.6" position="2 2 2"></a-light>
+
+        <a-camera fov="80">
+            <a-cursor id="cursor"
+                animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.1 0.1 0.1; to: 1 1 1"
+                animation__fusing="property: scale; startEvents: fusing; easing: easeInCubic; dur: 1500; from: 1 1 1; to: 0.1 0.1 0.1"
+                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" material="color: #e72626; shader: flat"
+                raycaster="objects: .collectible, .enemy" visible="false">
+            </a-cursor>
+        </a-camera>
+
+        <!-- Retícula (Anel) - agora apenas um indicador visual -->
+        <a-entity id="reticle" visible="false" geometry="primitive: ring; radius-inner: 0.05; radius-outer: 0.1;"
+            material="color: #e72626; shader: flat;"></a-entity>
+
+        <!-- Entidades colecionáveis -->
+        <a-entity id="bike" class="collectible" gltf-model="#bike-model" collectible-object visible="false"></a-entity>
+        <a-entity id="compass" class="collectible" gltf-model="#compass-model" collectible-object
+            visible="false"></a-entity>
+        <a-entity id="baseball-bat" class="collectible" gltf-model="#baseball-bat-model" collectible-object
+            visible="false"></a-entity>
+
+        <a-entity id="walkie-talkie" class="collectible" gltf-model="#walkie-talkie-model" collectible-object
+            material="shader: standard; transparent: false;" visible="false"></a-entity>
+        <a-entity id="demogorgon" class="enemy" gltf-model="#demogorgon-model" demogorgon-combat
+            visible="false"></a-entity>
+        <a-entity id="will-mundo-invertido" class="collectible" gltf-model="#will-mundo-invertido-model"
+            collectible-object visible="false"></a-entity>
+    </a-scene>
+
+
+
+    <!-- UI Overlay -->
+    <div id="overlay">
+        <div id="loading-screen" class="ui-screen ui-element">
+            <img id="logo" src="assets/img/stranger-things-logo.png" alt="Stranger Things Logo">
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <p id="loading-info">Carregando assets...</p>
+
+            <button id="enter-button" class="ui-element">Entrar no Mundo Invertido</button>
+        </div>
+
+        <!-- Ícone da mochila -->
+        <div id="backpack-icon" class="ui-element">
+            🎒
+            <div id="backpack-badge">0/6</div>
+        </div>
+
+        <!-- Modal da mochila -->
+        <div id="backpack-modal" class="ui-element">
+            <div id="backpack-content">
+                <div id="backpack-header">
+                    <div id="backpack-title">
+                        🎒 Mochila de Itens
+                    </div>
+                    <button id="close-backpack">✕</button>
+                </div>
+
+                <div id="progress-info">
+                    <span id="progress-text">0 de 6 itens coletados</span>
+                </div>
+                <div id="progress-bar-game">
+                    <div id="progress-fill"></div>
+                </div>
+
+                <ul id="collectibles-list">
+                    <li data-item="walkie-talkie">
+                        📻 Walkie-Talkie
+                        <span class="item-status">❌</span>
+                    </li>
+                    <li data-item="bike">
+                        🚲 Bicicleta
+                        <span class="item-status">❌</span>
+                    </li>
+                    <li data-item="compass">
+                        🧭 Bússola
+                        <span class="item-status">❌</span>
+                    </li>
+                    <li data-item="baseball-bat">
+                        ⚾ Taco de Baseball
+                        <span class="item-status">❌</span>
+                    </li>
+
+                    <li data-item="demogorgon">
+                        👹 Demogorgon
+                        <span class="item-status">❌</span>
+                    </li>
+                    <li data-item="will-mundo-invertido">
+                        👦 Will (Mundo Invertido)
+                        <span class="item-status">❌</span>
+                    </li>
+                </ul>
+
+                <div id="location-info">
+                    <strong>📍 Localização Atual:</strong><br>
+                    <span id="location-status">Aguardando GPS...</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="call-screen" class="ui-screen ui-element hidden">
+            <div id="call-status-bar">📱 Ligação recebida</div>
+
+            <div class="signal-bars">
+                <div class="signal-bar"></div>
+                <div class="signal-bar"></div>
+                <div class="signal-bar"></div>
+                <div class="signal-bar"></div>
+            </div>
+
+            <div id="call-content">
+                <img id="dustin-avatar" src="assets/img/dustin.png" alt="Dustin Henderson">
+                <div id="caller-name">Dustin Henderson</div>
+                <div id="caller-subtitle">Hawkins, Indiana</div>
+                <div id="call-status">Chamada recebida...</div>
+                <div id="call-timer">00:00</div>
+
+                <div id="call-buttons">
+                    <button id="decline-button" class="call-button ui-element">✖</button>
+                    <button id="answer-button" class="call-button ui-element calling-animation">📞</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="victory-screen" class="ui-screen ui-element hidden">
+            <h1>Você Conseguiu!</h1>
+            <p>Todos os itens foram encontrados.</p>
+        </div>
+
+        <!-- Medidor de distância na tela principal -->
+        <div id="distance-meter">
+            <span class="distance-icon">🎯</span>
+            <span class="distance-text" id="distance-text">Aguardando GPS...</span>
+        </div>
+
+        <!-- Container de notificações toast -->
+        <div id="toast-container"></div>
+
+        <!-- UI de Combate do Demogorgon -->
+        <div id="combat-ui" class="ui-element">
+            <div id="enemy-name">👹 Demogorgon</div>
+            <div id="health-text">Vida: <span id="health-value">100</span>/100</div>
+            <div id="health-bar-container">
+                <div id="health-bar"></div>
+            </div>
+            <div id="combat-instructions">Mire e clique no Demogorgon para atacar!</div>
+        </div>
+
+        <!-- Botão de debug temporário -->
+        <button id="debug-collect"
+            style="position: fixed; bottom: 20px; right: 20px; z-index: 30; padding: 10px; background: #ff0000; color: white; border: none; border-radius: 5px; display: none;">
+            Coletar Item (Debug)
+        </button>
+
+
+    </div>
+
+    <script src="src/game.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "stranger-things-ar",
+  "version": "1.0.0",
+  "description": "Stranger Things AR - jogo de caça aos objetos (projeto estático)",
+  "scripts": {
+    "start": "npx http-server -c-1 -p 8000",
+    "start-https": "npx http-server -S -C cert.pem -K key.pem -p 8000"
+  },
+  "devDependencies": {},
+  "author": "",
+  "license": "MIT"
+}

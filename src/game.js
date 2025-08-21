@@ -183,6 +183,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let callTimerInterval = null;
     let vibrationInterval = null;
     let ringtonePlaying = false;
+    // Handlers and fallback control for Dustin audio
+    let dustinAudioEndedHandler = null;
+    let dustinAudioErrorHandler = null;
+    let callEndTimeout = null;
 
     let currentMissionAudio = 'walkie-talkie'; // Controla qual áudio tocar
 
@@ -287,25 +291,63 @@ document.addEventListener('DOMContentLoaded', () => {
         callStartTime = Date.now();
         startCallTimer();
 
+        // Remover listeners antigos se existirem
+        if (dustinAudioEndedHandler && dustinAudio && typeof dustinAudio.removeEventListener === 'function') {
+            try { dustinAudio.removeEventListener('ended', dustinAudioEndedHandler); } catch (e) {}
+            dustinAudioEndedHandler = null;
+        }
+        if (dustinAudioErrorHandler && dustinAudio && typeof dustinAudio.removeEventListener === 'function') {
+            try { dustinAudio.removeEventListener('error', dustinAudioErrorHandler); } catch (e) {}
+            dustinAudioErrorHandler = null;
+        }
+
+        // Handler nomeado para garantir que podemos removê-lo depois
+        dustinAudioEndedHandler = function () {
+            callStatus.innerText = "Chamada finalizada";
+            // pequena folga antes de fechar para UX
+            setTimeout(() => endCall(false), 1500);
+        };
+
+        dustinAudioErrorHandler = function () {
+            callStatus.innerText = "Erro no áudio, finalizando...";
+            setTimeout(() => endCall(false), 2000);
+        };
+
+        dustinAudio.addEventListener('ended', dustinAudioEndedHandler);
+        dustinAudio.addEventListener('error', dustinAudioErrorHandler);
+
+        // Fallback: se o evento 'ended' não disparar (arquivos trocados), fechamos após duração + buffer
+        const scheduleFallbackEnd = () => {
+            if (callEndTimeout) clearTimeout(callEndTimeout);
+            const duration = (dustinAudio && !isNaN(dustinAudio.duration) && isFinite(dustinAudio.duration)) ? dustinAudio.duration : null;
+            if (duration && duration > 0) {
+                callEndTimeout = setTimeout(() => {
+                    console.warn('Fallback: encerrando chamada após duração do áudio');
+                    callStatus.innerText = "Chamada finalizada (fallback)";
+                    endCall(false);
+                }, (duration + 2) * 1000); // buffer de 2s
+            } else {
+                // Duração desconhecida: fallback seguro de 2 minutos
+                callEndTimeout = setTimeout(() => {
+                    console.warn('Fallback: encerrando chamada (timeout geral)');
+                    callStatus.innerText = "Chamada finalizada (timeout)";
+                    endCall(false);
+                }, 120000);
+            }
+        };
+
         const playAudio = () => {
-            dustinAudio.play().catch(error => {
+            dustinAudio.play().then(() => {
+                scheduleFallbackEnd();
+            }).catch(error => {
                 console.error('Erro ao reproduzir áudio:', error);
                 callStatus.innerText = "Áudio indisponível - continuando...";
-                setTimeout(endCall, 3000);
+                setTimeout(() => endCall(false), 3000);
             });
         };
 
         if (dustinAudio.readyState >= 2) playAudio();
         else dustinAudio.addEventListener('canplaythrough', playAudio, { once: true });
-
-        dustinAudio.addEventListener('ended', () => {
-            callStatus.innerText = "Chamada finalizada";
-            setTimeout(endCall, 1500);
-        });
-        dustinAudio.addEventListener('error', () => {
-            callStatus.innerText = "Erro no áudio, finalizando...";
-            setTimeout(endCall, 2000);
-        });
     }
 
     function startCallTimer() {
@@ -345,10 +387,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dustinAudio) {
             dustinAudio.pause();
             dustinAudio.currentTime = 0;
-            dustinAudio.removeEventListener('ended', arguments.callee);
-            dustinAudio.removeEventListener('error', arguments.callee);
+            try {
+                if (dustinAudioEndedHandler) dustinAudio.removeEventListener('ended', dustinAudioEndedHandler);
+            } catch (e) {}
+            try {
+                if (dustinAudioErrorHandler) dustinAudio.removeEventListener('error', dustinAudioErrorHandler);
+            } catch (e) {}
             dustinAudio = null;
         }
+
+        // Limpar timeout de fallback se existente
+        if (callEndTimeout) {
+            clearTimeout(callEndTimeout);
+            callEndTimeout = null;
+        }
+
+        dustinAudioEndedHandler = null;
+        dustinAudioErrorHandler = null;
 
         // Remover listeners dos botões para evitar vazamentos
         answerButton.removeEventListener('click', answerCall);

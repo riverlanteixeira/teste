@@ -103,12 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Coordenadas dos objetos (latitude, longitude)
     // IMPORTANTE: A ordem deve corresponder exatamente à array objectsToPlace
     const objectLocations = [
-        { lat: -27.639820466982767, lng: -48.66781802715769, name: 'Walkie-Talkie' },
-        { lat: -27.639820466982767, lng: -48.66781802715769, name: 'Bicicleta' },
-        { lat: -27.639820466982767, lng: -48.66781802715769, name: 'Bússola' },
-        { lat: -27.639820466982767, lng: -48.66781802715769, name: 'Taco de Baseball' },
-        { lat: -27.639820466982767, lng: -48.66781802715769, name: 'Demogorgon' },
-        { lat: -27.639820466982767, lng: -48.66781802715769, name: 'Will (Mundo Invertido)' }
+        { lat: -27.63979837778027, lng: -48.667736030079546, name: 'Walkie-Talkie' },
+                { lat: -27.63979837778027, lng: -48.667736030079546, name: 'Bicicleta' },
+                { lat: -27.63979837778027, lng: -48.667736030079546, name: 'Bússola' },
+                { lat: -27.63979837778027, lng: -48.667736030079546, name: 'Taco de Baseball' },
+                { lat: -27.63979837778027, lng: -48.667736030079546, name: 'Demogorgon' },
+                { lat: -27.63979837778027, lng: -48.667736030079546, name: 'Will (Mundo Invertido)' }
     ];
 
     const PROXIMITY_RADIUS = 10; // 10 metros
